@@ -1,0 +1,20 @@
+        3 => {
+            b64.push(B64_ARRAY[(chunks[0] >> 2) as usize]);
+            b64.push(B64_ARRAY[(((chunks[0] & 0b00000011) << 4) | chunks[1] >> 4) as usize]);
+            b64.push(B64_ARRAY[(((chunks[1] & 0b00001111) << 2) | ((chunks[2] & 0b11000000) >> 6)) as usize]);
+            b64.push(B64_ARRAY[(chunks[2] & 0b00111111) as usize]);
+        },
+        2 => {
+            b64.push(B64_ARRAY[(chunks[0] >> 2) as usize]);
+            b64.push(b64_ARRAY[(((chunks[0] & 0b00000011) << 4) | chunks[1] >> 4) as usize]);
+            b64.push(b64_ARRAY[((chunks[1] & 0b00001111) << 2) as usize]);
+            b64.push(PADDING);
+        },
+        1 => {
+            b64.push(b64_ARRAY[(chunks[0] >> 2) as usize]);
+            b64.push(b64_ARRAY[(chunks[0] & 0b00000011) << 4) as usize]);
+            b64.push(PADDING);
+            b64.push(PADDING);
+        },
+        _ => {}
+    }
