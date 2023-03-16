@@ -16,13 +16,21 @@ pub fn hex2b64(hex: &str) -> String {
 }
 
 fn hex2bytes(hex: &str) -> Vec<u8> {
-    let bytes: Vec<u8> = hex.as_bytes().to_vec();
+    let mut bytes: Vec<u8> = Vec::new();
+    for byte in hex.chars() {
+        let byte_result = u8::from_str_radix(&byte.to_string(), 16);
+        match byte_result {
+            Ok(value) => bytes.push(value),
+            Err(error) => ()
+        }
+    }
+    println!("{:?}", bytes);
     return bytes;
 }
 
 fn bytes2b64(bytes: Vec<u8>) -> String {
     let mut b64: Vec<char> = Vec::new();
-    for octet_array in bytes.as_slice().chunks(3) {
+    for octet_array in bytes.as_slice().chunks(6) {
         b64.extend(encode_chunks(octet_array));
     }
 
