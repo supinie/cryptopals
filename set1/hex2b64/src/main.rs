@@ -1,3 +1,7 @@
+use std::char;
+
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
+
 const B64_ARRAY: [char; 64] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P','Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'];
 
 const PADDING: char = '=';
@@ -5,36 +9,40 @@ const PADDING: char = '=';
 
 fn main() {
     let input_str: &str = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
-    let b64 = hex2b64(input_str);
+    let b64 = hex_2_b64(input_str);
+    println!("final: ");
     println!("{}", b64);
 }
 
-pub fn hex2b64(hex: &str) -> String {
-    let bytes = hex2bytes(hex);
-    let b64 = bytes2b64(bytes);
+pub fn hex_2_b64(hex: &str) -> String {
+    let bytes = hex_2_bytes(hex);
+    let b64 = bytes_2_b64(bytes);
     return b64;
 }
 
-fn hex2bytes(hex: &str) -> Vec<u8> {
+fn hex_2_bytes(hex: &str) -> Vec<u8> {
     let mut bytes: Vec<u8> = Vec::new();
     for byte in hex.chars() {
-        let byte_result = u8::from_str_radix(&byte.to_string(), 16);
-        match byte_result {
-            Ok(value) => bytes.push(value),
-            Err(error) => ()
-        }
+        bytes.push(hex_2_u8(byte).unwrap());
     }
-    println!("{:?}", bytes);
-    return bytes;
+    return bytes.chunks(2).map(|c| (c[0] << 4) + c[1]).collect::<Vec<u8>>();
 }
 
-fn bytes2b64(bytes: Vec<u8>) -> String {
-    let mut b64: Vec<char> = Vec::new();
-    for octet_array in bytes.as_slice().chunks(6) {
-        b64.extend(encode_chunks(octet_array));
+fn hex_2_u8(byte: char) -> Result<u8> {
+    match byte.to_digit(16) {
+        Some(i) => Ok(i as u8),
+        _ => Err(format!("invalid hex char {}", byte).into()),
+    }
+}
+
+fn bytes_2_b64(bytes: Vec<u8>) -> String {
+    let mut b64_vec: Vec<char> = Vec::new();
+    for octet_array in bytes.as_slice().chunks(3) {
+        b64_vec.extend(encode_chunks(octet_array));
     }
 
-    return b64.into_iter().collect::<String>();
+    let b64_string = b64_vec.into_iter().collect::<String>();
+    return b64_string;
 }
 
 fn encode_chunks(chunks: &[u8]) -> Vec<char> {
