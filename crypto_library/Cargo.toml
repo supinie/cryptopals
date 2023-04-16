@@ -1,10 +1,8 @@
 [package]
-name = "hex2b64"
+name = "crypto_library"
 version = "0.1.0"
 edition = "2021"
-authors = ["supinie"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-crypto_library = { version = "0.1.0", path = "../../crypto_library" }
