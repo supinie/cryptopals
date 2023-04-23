@@ -8,6 +8,7 @@ const PADDING: char = '=';
 
 pub fn hex_2_b64(hex: &str) -> String {
     let bytes = hex_2_bytes(hex);
+    println!("{:?}", bytes);
     let b64 = bytes_2_b64(bytes);
     return b64;
 }
@@ -18,6 +19,13 @@ pub fn hex_2_bytes(hex: &str) -> Vec<u8> {
         bytes.push(hex_2_u8(byte).unwrap());
     }
     return bytes.chunks(2).map(|c| (c[0] << 4) + c[1]).collect::<Vec<u8>>();
+}
+
+pub fn bytes_2_hex(bytes: Vec<u8>) -> String {
+    let hex = bytes.iter()
+        .map(|byte| format!("{:x?}", byte))
+        .collect::<String>();
+    return hex;
 }
 
 fn hex_2_u8(byte: char) -> Result<u8> {
@@ -61,4 +69,13 @@ fn encode_chunks(chunks: &[u8]) -> Vec<char> {
         _ => {}
     }
     return b64;
+}
+
+pub fn xor_bytes(bytes_1: Vec<u8>, bytes_2: Vec<u8>) -> Vec<u8> {
+    let xord_bytes = bytes_1
+        .iter()
+        .zip(bytes_2.iter())
+        .map(|(&byte_1, &byte_2)| byte_1 ^ byte_2)
+        .collect();
+    return xord_bytes;
 }
