@@ -49,7 +49,7 @@ pub fn hex_to_bytes(hex: &str) -> Result<Vec<u8>> {
 #[must_use]
 pub fn bytes_to_hex(bytes: &[u8]) -> String {
     bytes.iter().fold(String::new(), |mut acc, byte| {
-        write!(acc, "{byte:x?}").unwrap();
+        write!(acc, "{byte:02x?}").unwrap();
         acc
     })
 }
@@ -104,4 +104,11 @@ pub fn xor_bytes(bytes_1: &[u8], bytes_2: &[u8]) -> Vec<u8> {
         .zip(bytes_2.iter())
         .map(|(&byte_1, &byte_2)| byte_1 ^ byte_2)
         .collect()
+}
+
+pub fn repeating_xor(key: &str, plaintext: &str) -> Vec<u8> {
+    let n = plaintext.len() / key.len();
+    let long_key = key.repeat(n + 1);
+
+    xor_bytes(long_key.as_bytes(), plaintext.as_bytes())
 }
