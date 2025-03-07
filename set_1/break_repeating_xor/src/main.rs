@@ -25,6 +25,7 @@ fn main() {
 
     let mut distances: Vec<(f64, usize)> = Vec::new();
     for keysize in 2..40 {
+        // CHALLENGE IS B64 AT THE MOMENT - MUST CONVERT FIRST
         distances.push((test_hamming_distance(&challenge, keysize), keysize));
     }
 
