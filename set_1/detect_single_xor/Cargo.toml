@@ -1,0 +1,8 @@
+[package]
+name = "detect_single_xor"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+crypto_library = { version = "0.1.0", path = "../../crypto_library" }
+frequency_analysis = { version = "0.1.0", path = "../../frequency_analysis" }

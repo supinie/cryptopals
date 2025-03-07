@@ -20,6 +20,7 @@
 use crypto_library::{hex_to_bytes, xor_bytes};
 use std::{collections::HashMap, error::Error};
 
+#[derive(Debug)]
 pub struct Score {
     pub value: f64,
     pub key: u8,
