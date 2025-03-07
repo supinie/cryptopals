@@ -1,3 +1,22 @@
+#![warn(
+    clippy::cast_lossless,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::checked_conversions,
+    clippy::implicit_saturating_sub,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unwrap_used,
+    clippy::pedantic,
+    clippy::nursery,
+    rust_2018_idioms,
+    unused_lifetimes,
+    unused_qualifications
+)]
+#![allow(clippy::too_long_first_doc_paragraph)]
+
 use std::{char, fmt::Write};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
