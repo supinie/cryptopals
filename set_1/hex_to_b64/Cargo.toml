@@ -1,5 +1,5 @@
 [package]
-name = "hex2b64"
+name = "hex_to_b64"
 version = "0.1.0"
 edition = "2021"
 authors = ["supinie"]
