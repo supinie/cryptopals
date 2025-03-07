@@ -106,9 +106,23 @@ pub fn xor_bytes(bytes_1: &[u8], bytes_2: &[u8]) -> Vec<u8> {
         .collect()
 }
 
+#[must_use]
 pub fn repeating_xor(key: &str, plaintext: &str) -> Vec<u8> {
     let n = plaintext.len() / key.len();
     let long_key = key.repeat(n + 1);
 
     xor_bytes(long_key.as_bytes(), plaintext.as_bytes())
+}
+
+pub fn hamming_distance(x: &[u8], y: &[u8]) -> u32 {
+    x.iter()
+        .zip(y)
+        .fold(0, |a, (b, c)| a + (b ^ c).count_ones() as u32)
+}
+
+pub fn test_hamming_distance(ciphertext: &str, keysize: usize) -> f64 {
+    let c_1 = &ciphertext.as_bytes()[..keysize];
+    let c_2 = &ciphertext.as_bytes()[keysize..keysize * 2];
+
+    hamming_distance(c_1, c_2) as f64 / keysize as f64
 }
