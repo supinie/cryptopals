@@ -18,7 +18,7 @@
 #![allow(clippy::missing_panics_doc)]
 
 use crypto_library::{hex_to_bytes, xor_bytes};
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error};
 
 pub struct Score {
     pub value: f64,
@@ -68,8 +68,8 @@ fn score_text(text: &[u8]) -> f64 {
 }
 
 #[must_use]
-pub fn freq_analysis(input_str: &str) -> Score {
-    let bytes = hex_to_bytes(input_str).unwrap();
+pub fn freq_analysis(input_str: &str) -> Result<Score, Box<dyn Error + Send + Sync>> {
+    let bytes = hex_to_bytes(input_str)?;
 
     let mut min_score = Score {
         value: f64::INFINITY,
@@ -92,5 +92,5 @@ pub fn freq_analysis(input_str: &str) -> Score {
         }
     }
 
-    min_score
+    Ok(min_score)
 }
