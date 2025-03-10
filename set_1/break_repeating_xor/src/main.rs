@@ -1,4 +1,4 @@
-use crypto_library::{b64_to_bytes, hamming_distance, test_hamming_distance};
+use crypto_library::{b64_to_bytes, repeating_xor, test_hamming_distance};
 use frequency_analysis::freq_analysis;
 use std::fs::File;
 use std::io::Read;
@@ -19,9 +19,6 @@ fn main() {
     // let hamming = hamming_distance(x.as_bytes(), y.as_bytes());
     // println!("{hamming}");
 
-    // let test = test_hamming_distance(x.as_bytes(), 3);
-    // println!("{test}");
-
     let mut challenge = String::new();
 
     match File::open("src/challenge.txt") {
@@ -33,7 +30,8 @@ fn main() {
         }
     };
 
-    let chall_chars: Vec<char> = challenge.chars().collect();
+    let mut chall_chars: Vec<char> = challenge.chars().collect();
+    chall_chars.retain(|&c| c != '\n');
 
     let chall_bytes = b64_to_bytes(&chall_chars);
 
@@ -46,7 +44,7 @@ fn main() {
 
     let mut potential_keys = Vec::new();
 
-    for i in 0..6 {
+    for i in 0..3 {
         let split_chall = partition_vec(&chall_bytes, distances[i].1);
 
         let mut cracked_key = Vec::new();
@@ -57,10 +55,16 @@ fn main() {
         potential_keys.push(cracked_key);
     }
 
-    for key in potential_keys {
-        for score in key {
-            print!("{}", score.key as char);
+    for potential_key in potential_keys {
+        let mut key = Vec::new();
+        for score in potential_key {
+            key.push(score.key as char);
         }
-        println!("");
+        let key_str: String = key.into_iter().collect();
+        let plaintext_bytes = repeating_xor(&key_str, &challenge);
+        let plaintext = std::str::from_utf8(&plaintext_bytes).unwrap();
+
+        println!("{}", key_str);
+        println!("{}", plaintext);
     }
 }

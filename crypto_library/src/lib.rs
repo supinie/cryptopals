@@ -17,6 +17,7 @@
 )]
 #![allow(clippy::too_long_first_doc_paragraph)]
 
+use itertools::Itertools;
 use std::{char, fmt::Write};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
@@ -112,8 +113,6 @@ pub fn decode_chunk(encoded: &[char]) -> Vec<u8> {
     for (i, &c) in encoded.iter().enumerate() {
         buffer[i] = if c == PADDING {
             0
-        } else if c == 0xA as char {
-            continue;
         } else {
             B64_ARRAY.iter().position(|&x| x == c).unwrap() as u8
         };
@@ -156,8 +155,14 @@ pub fn hamming_distance(x: &[u8], y: &[u8]) -> u32 {
 }
 
 pub fn test_hamming_distance(ciphertext: &[u8], keysize: usize) -> f64 {
-    let c_1 = &ciphertext[..keysize];
-    let c_2 = &ciphertext[keysize..keysize * 2];
-
-    hamming_distance(c_1, c_2) as f64 / keysize as f64
+    let chunks: Vec<&[u8]> = (0..4)
+        .map(|i| &ciphertext[i * keysize..(i + 1) * keysize])
+        .collect();
+    let avg: f64 = chunks
+        .iter()
+        .combinations(2)
+        .map(|pair| hamming_distance(pair[0], pair[1]) as f64)
+        .sum::<f64>()
+        / 6.0;
+    avg / keysize as f64
 }
