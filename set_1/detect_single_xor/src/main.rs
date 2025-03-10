@@ -1,3 +1,4 @@
+use crypto_library::hex_to_bytes;
 use frequency_analysis::{Score, freq_analysis};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -10,7 +11,7 @@ fn main() {
 
     for line in reader.lines() {
         let line = line.unwrap();
-        scores.push(freq_analysis(&line).unwrap());
+        scores.push(freq_analysis(&hex_to_bytes(&line).unwrap()));
     }
 
     scores.sort_by(|a, b| a.value.partial_cmp(&b.value).unwrap());

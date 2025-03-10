@@ -65,36 +65,71 @@ fn hex_to_u8(byte: char) -> Result<u8> {
 fn bytes_to_b64(bytes: &[u8]) -> String {
     let mut b64_vec: Vec<char> = Vec::new();
     for octet_array in bytes.chunks(3) {
-        b64_vec.extend(encode_chunks(octet_array));
+        b64_vec.extend(encode_chunk(octet_array));
     }
 
     b64_vec.into_iter().collect::<String>()
 }
 
-fn encode_chunks(chunks: &[u8]) -> Vec<char> {
+pub fn b64_to_bytes(b64: &[char]) -> Vec<u8> {
+    let mut bytes_vec: Vec<u8> = Vec::new();
+    for octet_array in b64.chunks(4) {
+        bytes_vec.extend(decode_chunk(octet_array));
+    }
+
+    bytes_vec
+}
+
+pub fn encode_chunk(chunk: &[u8]) -> Vec<char> {
     let mut b64 = Vec::new();
-    match chunks.len() {
+    match chunk.len() {
         3 => {
-            b64.push(B64_ARRAY[(chunks[0] >> 2) as usize]);
-            b64.push(B64_ARRAY[(((chunks[0] & 0b0000_0011) << 4) | chunks[1] >> 4) as usize]);
-            b64.push(B64_ARRAY[(((chunks[1] & 0b0000_1111) << 2) | chunks[2] >> 6) as usize]);
-            b64.push(B64_ARRAY[(chunks[2] & 0b0011_1111) as usize]);
+            b64.push(B64_ARRAY[(chunk[0] >> 2) as usize]);
+            b64.push(B64_ARRAY[(((chunk[0] & 0b0000_0011) << 4) | chunk[1] >> 4) as usize]);
+            b64.push(B64_ARRAY[(((chunk[1] & 0b0000_1111) << 2) | chunk[2] >> 6) as usize]);
+            b64.push(B64_ARRAY[(chunk[2] & 0b0011_1111) as usize]);
         }
         2 => {
-            b64.push(B64_ARRAY[(chunks[0] >> 2) as usize]);
-            b64.push(B64_ARRAY[(((chunks[0] & 0b000_00011) << 4) | chunks[1] >> 4) as usize]);
-            b64.push(B64_ARRAY[((chunks[1] & 0b0000_1111) << 2) as usize]);
+            b64.push(B64_ARRAY[(chunk[0] >> 2) as usize]);
+            b64.push(B64_ARRAY[(((chunk[0] & 0b000_00011) << 4) | chunk[1] >> 4) as usize]);
+            b64.push(B64_ARRAY[((chunk[1] & 0b0000_1111) << 2) as usize]);
             b64.push(PADDING);
         }
         1 => {
-            b64.push(B64_ARRAY[(chunks[0] >> 2) as usize]);
-            b64.push(B64_ARRAY[((chunks[0] & 0b0000_0011) << 4) as usize]);
+            b64.push(B64_ARRAY[(chunk[0] >> 2) as usize]);
+            b64.push(B64_ARRAY[((chunk[0] & 0b0000_0011) << 4) as usize]);
             b64.push(PADDING);
             b64.push(PADDING);
         }
         _ => {}
     }
     b64
+}
+
+pub fn decode_chunk(encoded: &[char]) -> Vec<u8> {
+    let mut buffer = [0u8; 4];
+
+    for (i, &c) in encoded.iter().enumerate() {
+        buffer[i] = if c == PADDING {
+            0
+        } else if c == 0xA as char {
+            continue;
+        } else {
+            B64_ARRAY.iter().position(|&x| x == c).unwrap() as u8
+        };
+    }
+
+    let mut bytes = Vec::new();
+
+    bytes.push((buffer[0] << 2) | (buffer[1] >> 4));
+    if encoded[2] != PADDING {
+        bytes.push((buffer[1] << 4) | (buffer[2] >> 2));
+    }
+    if encoded[3] != PADDING {
+        bytes.push((buffer[2] << 6) | buffer[3]);
+    }
+
+    bytes
 }
 
 #[must_use]
@@ -120,9 +155,9 @@ pub fn hamming_distance(x: &[u8], y: &[u8]) -> u32 {
         .fold(0, |a, (b, c)| a + (b ^ c).count_ones() as u32)
 }
 
-pub fn test_hamming_distance(ciphertext: &str, keysize: usize) -> f64 {
-    let c_1 = &ciphertext.as_bytes()[..keysize];
-    let c_2 = &ciphertext.as_bytes()[keysize..keysize * 2];
+pub fn test_hamming_distance(ciphertext: &[u8], keysize: usize) -> f64 {
+    let c_1 = &ciphertext[..keysize];
+    let c_2 = &ciphertext[keysize..keysize * 2];
 
     hamming_distance(c_1, c_2) as f64 / keysize as f64
 }

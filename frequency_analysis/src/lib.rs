@@ -17,8 +17,8 @@
 )]
 #![allow(clippy::missing_panics_doc)]
 
-use crypto_library::{hex_to_bytes, xor_bytes};
-use std::{collections::HashMap, error::Error};
+use crypto_library::xor_bytes;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Score {
@@ -69,9 +69,7 @@ fn score_text(text: &[u8]) -> f64 {
 }
 
 #[must_use]
-pub fn freq_analysis(input_str: &str) -> Result<Score, Box<dyn Error + Send + Sync>> {
-    let bytes = hex_to_bytes(input_str)?;
-
+pub fn freq_analysis(bytes: &[u8]) -> Score {
     let mut min_score = Score {
         value: f64::INFINITY,
         key: 0,
@@ -81,7 +79,7 @@ pub fn freq_analysis(input_str: &str) -> Result<Score, Box<dyn Error + Send + Sy
     for i in 0..u8::MAX {
         let key = vec![i; bytes.len()];
 
-        let plaintext = xor_bytes(&key, &bytes);
+        let plaintext = xor_bytes(&key, bytes);
         let score = score_text(&plaintext);
         #[allow(clippy::float_cmp)]
         if min_score.value.min(score) == score {
@@ -93,5 +91,5 @@ pub fn freq_analysis(input_str: &str) -> Result<Score, Box<dyn Error + Send + Sy
         }
     }
 
-    Ok(min_score)
+    min_score
 }
