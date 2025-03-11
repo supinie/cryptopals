@@ -2,7 +2,6 @@ use crypto_library::hex_to_bytes;
 use frequency_analysis::{Score, freq_analysis};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::str;
 
 fn main() {
     let challenge = File::open("src/challenge.txt").unwrap();
@@ -22,6 +21,6 @@ fn main() {
     );
     println!(
         "plaintext: {}",
-        str::from_utf8(&scores[0].plaintext).unwrap()
+        String::from_utf8_lossy(&scores[0].plaintext)
     );
 }
