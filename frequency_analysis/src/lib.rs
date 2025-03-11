@@ -17,7 +17,7 @@
 )]
 #![allow(clippy::missing_panics_doc)]
 
-use crypto_library::xor_bytes;
+use crypto_library::{hamming_distance, repeating_xor, test_hamming_distance, xor_bytes};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -92,4 +92,75 @@ pub fn freq_analysis(bytes: &[u8]) -> Score {
     }
 
     min_score
+}
+
+#[allow(dead_code)]
+fn verify_hamming() {
+    let x: &str = "this is a test";
+    let y: &str = "wokka wokka!!!";
+
+    let hamming = hamming_distance(x.as_bytes(), y.as_bytes());
+    println!("{hamming}");
+}
+
+fn partition_vec(input: &[u8], n: usize) -> Vec<Vec<u8>> {
+    let mut output = vec![Vec::new(); n];
+    for (i, &value) in input.iter().enumerate() {
+        output[i % n].push(value);
+    }
+
+    output
+}
+
+fn get_scores_for_keylengths(chall_bytes: &[u8]) -> Vec<(f64, usize)> {
+    let mut distances: Vec<(f64, usize)> = Vec::new();
+    for keysize in 2..40 {
+        distances.push((test_hamming_distance(chall_bytes, keysize), keysize));
+    }
+
+    distances.sort_by(|(a, _), (b, _)| {
+        a.partial_cmp(b)
+            .expect("Real float value, no NaNs or INFINITY")
+    });
+    distances
+}
+
+fn rank_possible_keys(chall_bytes: &[u8], distances: &[(f64, usize)]) -> Vec<Vec<Score>> {
+    let mut potential_keys = Vec::new();
+
+    for key_length in distances.iter().take(3) {
+        let split_chall = partition_vec(chall_bytes, key_length.1);
+
+        let mut cracked_key = Vec::new();
+        for block in split_chall {
+            cracked_key.push(freq_analysis(&block));
+        }
+
+        potential_keys.push(cracked_key);
+    }
+
+    potential_keys
+}
+
+fn output_best_key(potential_keys: &[Vec<Score>], chall_bytes: &[u8]) {
+    for (i, potential_key) in potential_keys.iter().enumerate() {
+        let mut key = Vec::new();
+        for score in potential_key {
+            key.push(score.key as char);
+        }
+        let key_str: String = key.into_iter().collect();
+        let plaintext_bytes = repeating_xor(key_str.as_bytes(), chall_bytes);
+        let plaintext = String::from_utf8_lossy(&plaintext_bytes);
+
+        if i == 0 {
+            println!("KEY: {key_str}");
+            println!("PLAINTEXT: {plaintext}");
+        }
+    }
+}
+
+pub fn break_repeating_xor(chall_bytes: &[u8]) {
+    let key_scores = get_scores_for_keylengths(chall_bytes);
+    let potential_keys = rank_possible_keys(chall_bytes, &key_scores);
+    output_best_key(&potential_keys, chall_bytes);
 }
