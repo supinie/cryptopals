@@ -6,7 +6,6 @@
     clippy::cast_sign_loss,
     clippy::checked_conversions,
     clippy::implicit_saturating_sub,
-    clippy::panic,
     clippy::panic_in_result_fn,
     clippy::unwrap_used,
     clippy::pedantic,
@@ -15,9 +14,17 @@
     unused_lifetimes,
     unused_qualifications
 )]
-#![allow(clippy::too_long_first_doc_paragraph)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
 
+use aes::cipher::{
+    generic_array::{typenum, GenericArray},
+    BlockDecrypt, KeyInit,
+};
+use aes::Aes128;
 use itertools::Itertools;
+use std::fs::File;
+use std::io::Read;
 use std::{char, fmt::Write};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
@@ -72,6 +79,7 @@ fn bytes_to_b64(bytes: &[u8]) -> String {
     b64_vec.into_iter().collect::<String>()
 }
 
+#[must_use]
 pub fn b64_to_bytes(b64: &[char]) -> Vec<u8> {
     let mut bytes_vec: Vec<u8> = Vec::new();
     for octet_array in b64.chunks(4) {
@@ -81,6 +89,7 @@ pub fn b64_to_bytes(b64: &[char]) -> Vec<u8> {
     bytes_vec
 }
 
+#[must_use]
 pub fn encode_chunk(chunk: &[u8]) -> Vec<char> {
     let mut b64 = Vec::new();
     match chunk.len() {
@@ -107,14 +116,19 @@ pub fn encode_chunk(chunk: &[u8]) -> Vec<char> {
     b64
 }
 
+#[must_use]
 pub fn decode_chunk(encoded: &[char]) -> Vec<u8> {
     let mut buffer = [0u8; 4];
 
+    #[allow(clippy::cast_possible_truncation)]
     for (i, &c) in encoded.iter().enumerate() {
         buffer[i] = if c == PADDING {
             0
         } else {
-            B64_ARRAY.iter().position(|&x| x == c).unwrap() as u8
+            B64_ARRAY
+                .iter()
+                .position(|&x| x == c)
+                .expect("Only valid b64 chars") as u8
         };
     }
 
@@ -148,12 +162,15 @@ pub fn repeating_xor(key: &[u8], plaintext: &[u8]) -> Vec<u8> {
     xor_bytes(&long_key, plaintext)
 }
 
+#[must_use]
 pub fn hamming_distance(x: &[u8], y: &[u8]) -> u32 {
     x.iter()
         .zip(y)
-        .fold(0, |a, (b, c)| a + (b ^ c).count_ones() as u32)
+        .fold(0, |a, (b, c)| a + (b ^ c).count_ones())
 }
 
+#[must_use]
+#[allow(clippy::cast_precision_loss)]
 pub fn test_hamming_distance(ciphertext: &[u8], keysize: usize) -> f64 {
     let chunks: Vec<&[u8]> = (0..4)
         .map(|i| &ciphertext[i * keysize..(i + 1) * keysize])
@@ -161,8 +178,48 @@ pub fn test_hamming_distance(ciphertext: &[u8], keysize: usize) -> f64 {
     let avg: f64 = chunks
         .iter()
         .combinations(2)
-        .map(|pair| hamming_distance(pair[0], pair[1]) as f64)
+        .map(|pair| f64::from(hamming_distance(pair[0], pair[1])))
         .sum::<f64>()
         / 6.0;
     avg / keysize as f64
+}
+
+#[must_use]
+pub fn get_challenge() -> Vec<u8> {
+    let mut challenge = String::new();
+
+    match File::open("src/challenge.txt") {
+        Ok(mut file) => {
+            file.read_to_string(&mut challenge)
+                .expect("Valid text document");
+        }
+        Err(error) => {
+            panic!("Error opening file: {error}");
+        }
+    };
+    let mut chall_chars: Vec<char> = challenge.chars().collect();
+    chall_chars.retain(|&c| c != '\n');
+
+    b64_to_bytes(&chall_chars)
+}
+
+#[must_use]
+pub fn aes_128_ecb(key: &[u8], chall_bytes: &[u8]) -> Vec<u8> {
+    let key: &GenericArray<u8, typenum::U16> = GenericArray::from_slice(key);
+
+    let mut chall_blocks: Vec<GenericArray<u8, typenum::U16>> = chall_bytes
+        .chunks(16)
+        .map(|chunk| GenericArray::from_slice(chunk).to_owned())
+        .collect();
+
+    let cipher = Aes128::new(key);
+
+    cipher.decrypt_blocks(chall_blocks.as_mut_slice());
+
+    chall_blocks
+        .iter()
+        .flatten()
+        // .map(|item| item.to_owned())
+        .map(ToOwned::to_owned)
+        .collect::<Vec<u8>>()
 }
