@@ -55,16 +55,18 @@ fn main() {
         potential_keys.push(cracked_key);
     }
 
-    for potential_key in potential_keys {
+    for (i, potential_key) in potential_keys.iter().enumerate() {
         let mut key = Vec::new();
         for score in potential_key {
             key.push(score.key as char);
         }
         let key_str: String = key.into_iter().collect();
-        let plaintext_bytes = repeating_xor(&key_str, &challenge);
+        let plaintext_bytes = repeating_xor(key_str.as_bytes(), &chall_bytes);
         let plaintext = std::str::from_utf8(&plaintext_bytes).unwrap();
 
-        println!("{}", key_str);
-        println!("{}", plaintext);
+        if i == 0 {
+            println!("KEY: {}", key_str);
+            println!("PLAINTEXT: {}", plaintext);
+        }
     }
 }

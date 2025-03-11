@@ -141,11 +141,11 @@ pub fn xor_bytes(bytes_1: &[u8], bytes_2: &[u8]) -> Vec<u8> {
 }
 
 #[must_use]
-pub fn repeating_xor(key: &str, plaintext: &str) -> Vec<u8> {
+pub fn repeating_xor(key: &[u8], plaintext: &[u8]) -> Vec<u8> {
     let n = plaintext.len() / key.len();
     let long_key = key.repeat(n + 1);
 
-    xor_bytes(long_key.as_bytes(), plaintext.as_bytes())
+    xor_bytes(&long_key, plaintext)
 }
 
 pub fn hamming_distance(x: &[u8], y: &[u8]) -> u32 {
