@@ -1,3 +1,9 @@
+use crypto_library::{PKCS7, bytes_to_hex};
+
 fn main() {
-    println!("Hello, world!");
+    let mut block = "YELLOW SUBMARINE".as_bytes().to_owned();
+
+    block.pad(20);
+
+    println!("{:?}", bytes_to_hex(&block));
 }

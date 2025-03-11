@@ -56,10 +56,16 @@ pub fn hex_to_bytes(hex: &str) -> Result<Vec<u8>> {
 
 #[must_use]
 pub fn bytes_to_hex(bytes: &[u8]) -> String {
-    bytes.iter().fold(String::new(), |mut acc, byte| {
-        write!(acc, "{byte:02x?}").unwrap();
-        acc
-    })
+    bytes
+        .iter()
+        .enumerate()
+        .fold(String::new(), |mut acc, (i, byte)| {
+            if i > 0 {
+                write!(acc, " ").unwrap();
+            }
+            write!(acc, "{byte:02x?}").unwrap();
+            acc
+        })
 }
 
 fn hex_to_u8(byte: char) -> Result<u8> {
@@ -222,4 +228,20 @@ pub fn aes_128_ecb(key: &[u8], chall_bytes: &[u8]) -> Vec<u8> {
         // .map(|item| item.to_owned())
         .map(ToOwned::to_owned)
         .collect::<Vec<u8>>()
+}
+
+pub trait PKCS7 {
+    fn pad(&mut self, size: usize);
+}
+
+impl PKCS7 for Vec<u8> {
+    fn pad(&mut self, size: usize) {
+        assert!(
+            self.len() < size,
+            "Length with padding must be longer than given block"
+        );
+        let mut required_bytes = vec![4u8; size - self.len()];
+
+        self.append(&mut required_bytes);
+    }
 }

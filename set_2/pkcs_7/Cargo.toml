@@ -4,3 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+crypto_library = { version = "0.1.0", path = "../../crypto_library" }
