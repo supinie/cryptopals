@@ -100,7 +100,7 @@ fn verify_hamming() {
     let y: &str = "wokka wokka!!!";
 
     let hamming = hamming_distance(x.as_bytes(), y.as_bytes());
-    println!("{hamming}");
+    assert_eq!(hamming, 37);
 }
 
 fn partition_vec(input: &[u8], n: usize) -> Vec<Vec<u8>> {
