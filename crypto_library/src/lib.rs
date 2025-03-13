@@ -20,6 +20,7 @@
 use aes::cipher::{consts::U16, generic_array::GenericArray, BlockDecrypt, BlockEncrypt, KeyInit};
 use aes::Aes128;
 use itertools::Itertools;
+use rand::prelude::*;
 use std::fs::File;
 use std::io::Read;
 use std::{char, fmt::Write};
@@ -250,12 +251,9 @@ pub trait PKCS7 {
 
 impl PKCS7 for Vec<u8> {
     #[allow(clippy::cast_possible_truncation)]
-    fn pad(&mut self, size: usize) {
-        assert!(
-            self.len() <= size,
-            "Length with padding must be longer than or equal to given block"
-        );
-        let mut required_bytes = vec![(size - self.len()) as u8; size - self.len()];
+    fn pad(&mut self, block_size: usize) {
+        let padding = block_size - self.len() % block_size;
+        let mut required_bytes = vec![(padding) as u8; padding];
 
         self.append(&mut required_bytes);
     }
@@ -299,4 +297,47 @@ pub fn aes_128_cbc(key: &[u8], bytes: &[u8], iv: &[u8], mode: &Mode) -> Vec<u8> 
     }
 
     generic_arr_to_vec(&blocks)
+}
+
+fn random_aes_key() -> [u8; 16] {
+    rand::random()
+}
+
+pub fn aes_oracle(bytes: &[u8]) -> (String, Vec<u8>) {
+    let key = random_aes_key();
+
+    let mut prefix = Vec::<u8>::new();
+    let mut suffix = Vec::<u8>::new();
+
+    let mut rng = rand::rng();
+    for _ in 0..rng.random_range(5..=10) {
+        prefix.push(rand::random());
+    }
+
+    for _ in 0..rng.random_range(5..=10) {
+        suffix.push(rand::random());
+    }
+
+    let mut input = [&prefix, bytes, &suffix].concat();
+    input.pad(16);
+
+    if rand::random() {
+        ("ECB".to_owned(), aes_128_ecb(&key, &input, &Mode::Encrypt))
+    } else {
+        let iv = random_aes_key();
+        (
+            "CBC".to_owned(),
+            aes_128_cbc(&key, &input, &iv, &Mode::Encrypt),
+        )
+    }
+}
+
+pub fn aes_mode_detector(ciphertext: &[u8]) -> String {
+    let blocks: Vec<&[u8]> = ciphertext.chunks(16).collect();
+
+    if blocks[1] == blocks[2] {
+        "ECB".to_owned()
+    } else {
+        "CBC".to_owned()
+    }
 }
