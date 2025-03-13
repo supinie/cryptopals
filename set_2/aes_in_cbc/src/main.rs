@@ -7,7 +7,7 @@ fn main() {
         "YELLOW SUBMARINE".as_bytes(),
         &challenge,
         &[0u8; 16],
-        &Mode::Encrypt,
+        &Mode::Decrypt,
     );
     let plaintext = String::from_utf8_lossy(&plaintext_bytes);
     println!("{:?}", plaintext);

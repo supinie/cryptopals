@@ -228,7 +228,7 @@ fn as_blocks(bytes: &[u8]) -> Vec<GenericArray<u8, U16>> {
         .collect()
 }
 
-fn generic_arr_to_vec(gen_arr: Vec<GenericArray<u8, U16>>) -> Vec<u8> {
+fn generic_arr_to_vec(gen_arr: &[GenericArray<u8, U16>]) -> Vec<u8> {
     gen_arr.iter().flatten().map(ToOwned::to_owned).collect()
 }
 
@@ -236,11 +236,11 @@ fn generic_arr_to_vec(gen_arr: Vec<GenericArray<u8, U16>>) -> Vec<u8> {
 pub fn aes_128_ecb(key: &[u8], bytes: &[u8], mode: &Mode) -> Vec<u8> {
     let mut blocks = as_blocks(bytes);
 
-    for block in blocks.iter_mut() {
+    for block in &mut blocks {
         aes_block(key, block, mode);
     }
 
-    generic_arr_to_vec(blocks)
+    generic_arr_to_vec(&blocks)
 }
 
 pub trait PKCS7 {
@@ -263,17 +263,28 @@ fn xor_generic_arr(x: &[u8], y: &[u8]) -> GenericArray<u8, U16> {
     *GenericArray::from_slice(&xor_bytes(x, y))
 }
 
+#[must_use]
 pub fn aes_128_cbc(key: &[u8], bytes: &[u8], iv: &[u8], mode: &Mode) -> Vec<u8> {
     assert_eq!(iv.len(), 16);
 
     let mut blocks = as_blocks(bytes);
-    let mut temp = iv;
+    let mut temp = iv.to_vec();
 
-    for block in blocks.iter_mut() {
-        *block = xor_generic_arr(block.as_slice(), temp);
-        aes_block(key, block, mode);
-        temp = block.as_slice();
+    for block in &mut blocks {
+        match mode {
+            Mode::Encrypt => {
+                *block = xor_generic_arr(block.as_slice(), &temp);
+                aes_block(key, block, mode);
+                temp = block.to_vec();
+            }
+            Mode::Decrypt => {
+                let ct = *block;
+                aes_block(key, block, mode);
+                *block = xor_generic_arr(block.as_slice(), &temp);
+                temp = ct.to_vec();
+            }
+        };
     }
 
-    generic_arr_to_vec(blocks)
+    generic_arr_to_vec(&blocks)
 }
