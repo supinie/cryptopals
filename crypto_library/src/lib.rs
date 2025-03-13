@@ -245,17 +245,29 @@ pub fn aes_128_ecb(key: &[u8], bytes: &[u8], mode: &Mode) -> Vec<u8> {
 
 pub trait PKCS7 {
     fn pad(&mut self, size: usize);
+    fn unpad(&mut self);
 }
 
 impl PKCS7 for Vec<u8> {
+    #[allow(clippy::cast_possible_truncation)]
     fn pad(&mut self, size: usize) {
         assert!(
-            self.len() < size,
-            "Length with padding must be longer than given block"
+            self.len() <= size,
+            "Length with padding must be longer than or equal to given block"
         );
-        let mut required_bytes = vec![4u8; size - self.len()];
+        let mut required_bytes = vec![(size - self.len()) as u8; size - self.len()];
 
         self.append(&mut required_bytes);
+    }
+
+    fn unpad(&mut self) {
+        let last = self.last();
+        if let Some(padding_amount) = last {
+            let data_len = self.len() - *padding_amount as usize;
+            if self[data_len..].iter().all(|x| x == padding_amount) {
+                self.truncate(data_len);
+            }
+        }
     }
 }
 

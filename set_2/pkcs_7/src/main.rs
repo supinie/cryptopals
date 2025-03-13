@@ -6,4 +6,8 @@ fn main() {
     block.pad(20);
 
     println!("{:?}", bytes_to_hex(&block));
+
+    block.unpad();
+
+    println!("{:?}", bytes_to_hex(&block));
 }
