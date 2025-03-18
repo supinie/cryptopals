@@ -201,7 +201,7 @@ pub fn get_challenge() -> Vec<u8> {
         Err(error) => {
             panic!("Error opening file: {error}");
         }
-    };
+    }
     let mut chall_chars: Vec<char> = challenge.chars().collect();
     chall_chars.retain(|&c| c != '\n');
 
@@ -294,7 +294,7 @@ pub fn aes_128_cbc(key: &[u8], bytes: &[u8], iv: &[u8], mode: &Mode) -> Vec<u8> 
                 *block = xor_generic_arr(block.as_slice(), &temp);
                 temp = ct.to_vec();
             }
-        };
+        }
     }
 
     generic_arr_to_vec(&blocks)
@@ -304,6 +304,7 @@ fn random_aes_key() -> [u8; 16] {
     rand::random()
 }
 
+#[must_use]
 pub fn aes_oracle(bytes: &[u8]) -> (String, Vec<u8>) {
     let key = random_aes_key();
     println!("{key:?}");
@@ -334,6 +335,7 @@ pub fn aes_oracle(bytes: &[u8]) -> (String, Vec<u8>) {
     }
 }
 
+#[must_use]
 pub fn aes_mode_detector(ciphertext: &[u8]) -> String {
     let blocks: Vec<&[u8]> = ciphertext.chunks(16).collect();
 
@@ -355,7 +357,7 @@ fn aes_ecb_oracle(bytes: &[u8]) -> Vec<u8> {
 }
 
 fn generate_prefix(length: usize) -> Vec<u8> {
-    vec!["A".as_bytes()[0]; length]
+    vec![b"A"[0]; length]
 }
 
 fn generate_text(prefix: &[u8]) -> Vec<u8> {
@@ -388,6 +390,7 @@ fn generate_last_byte_dict(prefix: &[u8], block: usize, blocksize: usize) -> Has
     potential_blocks
 }
 
+#[must_use]
 pub fn byte_at_a_time() -> Vec<u8> {
     let mut plaintext = Vec::new();
 
