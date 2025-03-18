@@ -381,9 +381,8 @@ fn generate_last_byte_dict(prefix: &[u8], block: usize, blocksize: usize) -> Has
     for i in 0..=255 {
         let mut plaintext = prefix.to_owned();
         plaintext.push(i);
-        plaintext.extend_from_slice(&get_challenge());
-        let ct_block =
-            aes_ecb_oracle(&plaintext)[block * blocksize..(block + 1) * blocksize].to_vec();
+        plaintext.extend_from_slice(&get_challenge()[block * (blocksize - 1)..]);
+        let ct_block = aes_ecb_oracle(&plaintext)[0..blocksize].to_vec();
         potential_blocks.insert(ct_block, i);
     }
     potential_blocks
@@ -394,23 +393,28 @@ pub fn byte_at_a_time() -> Vec<u8> {
 
     let (blocksize, suffix_len) = find_blocksize(&aes_ecb_oracle);
     assert_eq!(blocksize, 16);
-    // assert_eq!(
-    //     aes_mode_detector(&aes_ecb_oracle(&get_challenge())),
-    //     "ECB".to_owned()
-    // );
+
+    let test = [0u8; 60];
+    let mode = aes_mode_detector(&aes_ecb_oracle(&test));
+    assert_eq!(mode, "ECB".to_owned());
 
     let mut block = 0;
-    while plaintext.len() < suffix_len {
+    while plaintext.len() < suffix_len - 1 {
         for i in 1..blocksize {
-            let mut prefix = generate_prefix((block + 1) * blocksize - i);
-            let target_block = &aes_ecb_oracle(&generate_text(&prefix))
-                [block * blocksize..(block + 1) * blocksize];
-            println!("target: {target_block:?}");
-            prefix.extend_from_slice(&plaintext);
-            println!("prefix: {prefix:?}");
+            if plaintext.len() == suffix_len {
+                break;
+            }
+            let mut prefix = generate_prefix(blocksize - i);
+            let mut input = prefix.clone();
+            input.extend_from_slice(&get_challenge()[block * (blocksize - 1)..]);
+            let target_block = &aes_ecb_oracle(&input)[0..blocksize];
+            prefix.extend_from_slice(&plaintext[block * (blocksize - 1)..]);
             let target_dict = generate_last_byte_dict(&prefix, block, blocksize);
-            plaintext.push(*target_dict.get(target_block).unwrap());
-            println!("plaintext: {plaintext:?}");
+            if let Some(byte) = target_dict.get(target_block) {
+                plaintext.push(*byte);
+            } else {
+                panic!("Target block not found");
+            }
         }
         block += 1;
     }
