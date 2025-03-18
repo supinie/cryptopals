@@ -21,6 +21,7 @@ use aes::cipher::{consts::U16, generic_array::GenericArray, BlockDecrypt, BlockE
 use aes::Aes128;
 use itertools::Itertools;
 use rand::prelude::*;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::{char, fmt::Write};
@@ -305,6 +306,7 @@ fn random_aes_key() -> [u8; 16] {
 
 pub fn aes_oracle(bytes: &[u8]) -> (String, Vec<u8>) {
     let key = random_aes_key();
+    println!("{key:?}");
 
     let mut prefix = Vec::<u8>::new();
     let mut suffix = Vec::<u8>::new();
@@ -340,4 +342,77 @@ pub fn aes_mode_detector(ciphertext: &[u8]) -> String {
     } else {
         "CBC".to_owned()
     }
+}
+
+const ECB_ORACLE_KEY: [u8; 16] = [
+    64, 89, 210, 107, 64, 254, 205, 40, 194, 186, 65, 174, 63, 112, 222, 159,
+];
+
+fn aes_ecb_oracle(bytes: &[u8]) -> Vec<u8> {
+    let mut input = bytes.to_owned();
+    input.pad(16);
+    aes_128_ecb(&ECB_ORACLE_KEY, &input, &Mode::Encrypt)
+}
+
+fn generate_prefix(length: usize) -> Vec<u8> {
+    vec!["A".as_bytes()[0]; length]
+}
+
+fn generate_text(prefix: &[u8]) -> Vec<u8> {
+    let mut text = prefix.to_owned();
+    text.extend_from_slice(&get_challenge());
+    text
+}
+
+fn find_blocksize(oracle: &dyn Fn(&[u8]) -> Vec<u8>) -> (usize, usize) {
+    let l_1 = oracle(&generate_text(&generate_prefix(1))).len();
+    for i in 2.. {
+        let l_n = oracle(&generate_text(&generate_prefix(i))).len();
+        if l_n > l_1 {
+            // return (blocksize, suffix_len)
+            return (l_n - l_1, l_1 - i);
+        }
+    }
+    (0, 0)
+}
+
+fn generate_last_byte_dict(prefix: &[u8], block: usize, blocksize: usize) -> HashMap<Vec<u8>, u8> {
+    let mut potential_blocks = HashMap::new();
+    for i in 0..=255 {
+        let mut plaintext = prefix.to_owned();
+        plaintext.push(i);
+        plaintext.extend_from_slice(&get_challenge());
+        let ct_block =
+            aes_ecb_oracle(&plaintext)[block * blocksize..(block + 1) * blocksize].to_vec();
+        potential_blocks.insert(ct_block, i);
+    }
+    potential_blocks
+}
+
+pub fn byte_at_a_time() -> Vec<u8> {
+    let mut plaintext = Vec::new();
+
+    let (blocksize, suffix_len) = find_blocksize(&aes_ecb_oracle);
+    assert_eq!(blocksize, 16);
+    // assert_eq!(
+    //     aes_mode_detector(&aes_ecb_oracle(&get_challenge())),
+    //     "ECB".to_owned()
+    // );
+
+    let mut block = 0;
+    while plaintext.len() < suffix_len {
+        for i in 1..blocksize {
+            let mut prefix = generate_prefix((block + 1) * blocksize - i);
+            let target_block = &aes_ecb_oracle(&generate_text(&prefix))
+                [block * blocksize..(block + 1) * blocksize];
+            println!("target: {target_block:?}");
+            prefix.extend_from_slice(&plaintext);
+            println!("prefix: {prefix:?}");
+            let target_dict = generate_last_byte_dict(&prefix, block, blocksize);
+            plaintext.push(*target_dict.get(target_block).unwrap());
+            println!("plaintext: {plaintext:?}");
+        }
+        block += 1;
+    }
+    plaintext
 }
