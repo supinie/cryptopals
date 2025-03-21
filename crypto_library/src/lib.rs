@@ -246,27 +246,41 @@ pub fn aes_128_ecb(key: &[u8], bytes: &[u8], mode: &Mode) -> Vec<u8> {
 }
 
 pub trait PKCS7 {
-    fn pad(&mut self, size: usize);
-    fn unpad(&mut self);
+    #[must_use]
+    fn pad(&self, size: usize) -> Vec<u8>;
+    #[must_use]
+    fn unpad(&self) -> Vec<u8>;
 }
 
 impl PKCS7 for Vec<u8> {
     #[allow(clippy::cast_possible_truncation)]
-    fn pad(&mut self, block_size: usize) {
+    fn pad(&self, block_size: usize) -> Self {
         let padding = block_size - self.len() % block_size;
-        let mut required_bytes = vec![(padding) as u8; padding];
+        let required_bytes = vec![(padding) as u8; padding];
 
-        self.append(&mut required_bytes);
+        [&self[..], &required_bytes[..]].concat()
     }
 
-    fn unpad(&mut self) {
+    fn unpad(&self) -> Self {
         let last = self.last();
         if let Some(padding_amount) = last {
             let data_len = self.len() - *padding_amount as usize;
             if self[data_len..].iter().all(|x| x == padding_amount) {
-                self.truncate(data_len);
+                return self[..data_len].to_vec();
             }
         }
+        panic!("Invalid padding");
+    }
+}
+
+impl PKCS7 for &[u8] {
+    #[allow(clippy::cast_possible_truncation)]
+    fn pad(&self, block_size: usize) -> Vec<u8> {
+        self.to_vec().pad(block_size)
+    }
+
+    fn unpad(&self) -> Vec<u8> {
+        self.to_vec().unpad()
     }
 }
 
@@ -300,7 +314,8 @@ pub fn aes_128_cbc(key: &[u8], bytes: &[u8], iv: &[u8], mode: &Mode) -> Vec<u8> 
     generic_arr_to_vec(&blocks)
 }
 
-fn random_aes_key() -> [u8; 16] {
+#[must_use]
+pub fn random_aes_key() -> [u8; 16] {
     rand::random()
 }
 
@@ -321,8 +336,7 @@ pub fn aes_oracle(bytes: &[u8]) -> (String, Vec<u8>) {
         suffix.push(rand::random());
     }
 
-    let mut input = [&prefix, bytes, &suffix].concat();
-    input.pad(16);
+    let input = [&prefix, bytes, &suffix].concat().pad(16);
 
     if rand::random() {
         ("ECB".to_owned(), aes_128_ecb(&key, &input, &Mode::Encrypt))
@@ -351,8 +365,7 @@ const ECB_ORACLE_KEY: [u8; 16] = [
 ];
 
 fn aes_ecb_oracle(bytes: &[u8]) -> Vec<u8> {
-    let mut input = bytes.to_owned();
-    input.pad(16);
+    let input = bytes.to_owned().pad(16);
     aes_128_ecb(&ECB_ORACLE_KEY, &input, &Mode::Encrypt)
 }
 
