@@ -8,8 +8,8 @@ fn main() {
         &challenge,
         &[0u8; 16],
         &Mode::Decrypt,
-    );
-    plaintext_bytes.unpad();
+    )
+    .unpad();
     let plaintext = String::from_utf8_lossy(&plaintext_bytes);
     println!("{:?}", plaintext);
 }
