@@ -436,3 +436,23 @@ pub fn byte_at_a_time() -> Vec<u8> {
     }
     plaintext
 }
+
+fn random_prefix() -> Vec<u8> {
+    let length = rand::random::<u8>();
+    let mut prefix = Vec::new();
+
+    for _ in 0..length {
+        prefix.push(rand::random::<u8>());
+    }
+
+    prefix
+}
+
+#[must_use]
+pub fn prefix_byte_at_a_time() -> Vec<u8> {
+    let mut plaintext: Vec<u8> = Vec::new();
+
+    let prefix = random_prefix();
+
+    Vec::new()
+}
