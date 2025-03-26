@@ -369,7 +369,7 @@ fn aes_ecb_oracle(bytes: &[u8]) -> Vec<u8> {
     aes_128_ecb(&ECB_ORACLE_KEY, &input, &Mode::Encrypt)
 }
 
-fn generate_prefix(length: usize) -> Vec<u8> {
+fn generate_attacker_prefix(length: usize) -> Vec<u8> {
     vec![b"A"[0]; length]
 }
 
@@ -380,9 +380,9 @@ fn generate_text(prefix: &[u8]) -> Vec<u8> {
 }
 
 fn find_blocksize(oracle: &dyn Fn(&[u8]) -> Vec<u8>) -> (usize, usize) {
-    let l_1 = oracle(&generate_text(&generate_prefix(1))).len();
+    let l_1 = oracle(&generate_text(&generate_attacker_prefix(1))).len();
     for i in 2.. {
-        let l_n = oracle(&generate_text(&generate_prefix(i))).len();
+        let l_n = oracle(&generate_text(&generate_attacker_prefix(i))).len();
         if l_n > l_1 {
             // return (blocksize, suffix_len)
             return (l_n - l_1, l_1 - i);
@@ -420,7 +420,7 @@ pub fn byte_at_a_time() -> Vec<u8> {
             if plaintext.len() == suffix_len {
                 break;
             }
-            let mut prefix = generate_prefix(blocksize - i);
+            let mut prefix = generate_attacker_prefix(blocksize - i);
             let mut input = prefix.clone();
             input.extend_from_slice(&get_challenge()[block * (blocksize - 1)..]);
             let target_block = &aes_ecb_oracle(&input)[0..blocksize];
@@ -438,7 +438,7 @@ pub fn byte_at_a_time() -> Vec<u8> {
 }
 
 fn random_prefix() -> Vec<u8> {
-    let length = rand::random::<u8>();
+    let length = rand::rng().random_range(1..16);
     let mut prefix = Vec::new();
 
     for _ in 0..length {
@@ -448,11 +448,86 @@ fn random_prefix() -> Vec<u8> {
     prefix
 }
 
+fn find_harder_blocksize(oracle: &dyn Fn(&[u8]) -> Vec<u8>, prefix: &[u8]) -> (usize, usize) {
+    let l_1 = oracle(&generate_text(
+        &[prefix, &generate_attacker_prefix(1)].concat(),
+    ))
+    .len();
+    for i in 2.. {
+        let l_n = oracle(&generate_text(
+            &[prefix, &generate_attacker_prefix(i)].concat(),
+        ))
+        .len();
+        if l_n > l_1 {
+            // return (blocksize, prefix + suffix len)
+            return (l_n - l_1, l_1 - i);
+        }
+    }
+    (0, 0)
+}
+
+fn find_prefix_len(oracle: &dyn Fn(&[u8]) -> Vec<u8>, prefix: &[u8]) -> usize {
+    for i in 1.. {
+        let ct_1 = oracle(&generate_text(
+            &[prefix, &generate_attacker_prefix(i)].concat(),
+        ));
+        let ct_2 = oracle(&generate_text(
+            &[prefix, &generate_attacker_prefix(i + 1)].concat(),
+        ));
+        if ct_1[..16] == ct_2[..16] {
+            return 16 - i;
+        }
+    }
+    0
+}
+
 #[must_use]
 pub fn prefix_byte_at_a_time() -> Vec<u8> {
     let mut plaintext: Vec<u8> = Vec::new();
 
-    let prefix = random_prefix();
+    let fixed_prefix = random_prefix();
 
-    Vec::new()
+    let (blocksize, pre_post_ffix_len) = find_harder_blocksize(&aes_ecb_oracle, &fixed_prefix);
+    assert_eq!(blocksize, 16);
+    let prefix_len = find_prefix_len(&aes_ecb_oracle, &fixed_prefix);
+    let suffix_len = pre_post_ffix_len - prefix_len;
+
+    let mut block = 0;
+    while plaintext.len() < suffix_len - 1 {
+        for i in 1..blocksize - prefix_len {
+            if plaintext.len() == suffix_len {
+                break;
+            }
+            let chosen_prefix = &[
+                fixed_prefix.clone(),
+                generate_attacker_prefix(blocksize - prefix_len - i),
+            ][..]
+                .concat();
+
+            let target_block = &aes_ecb_oracle(
+                &[
+                    chosen_prefix.to_owned(),
+                    get_challenge()[block * (blocksize - prefix_len - 1)..].to_vec(),
+                ][..]
+                    .concat()[..],
+            )[..blocksize];
+
+            let target_dict = generate_last_byte_dict(
+                &[
+                    chosen_prefix.clone(),
+                    plaintext[block * (blocksize - prefix_len - 1)..].to_vec(),
+                ][..]
+                    .concat(),
+                0,
+                blocksize,
+            );
+            if let Some(byte) = target_dict.get(target_block) {
+                plaintext.push(*byte);
+            } else {
+                panic!("Target block not found");
+            }
+        }
+        block += 1;
+    }
+    plaintext
 }
